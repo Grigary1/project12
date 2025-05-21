@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import User from "../models/User.js";
 import path from "path";
 import fs from "fs";
+import { validationResult, body } from 'express-validator';
 
 const adminLogin = async (req, res) => {
   try {
@@ -31,7 +32,59 @@ const adminLogin = async (req, res) => {
   }
 };
 
+export const validateUsersBatch = [
+    body('users').isArray().withMessage('Users must be an array'),
+    body('users.*.firstName').notEmpty().withMessage('First Name is required'),
+    body('users.*.lastName').notEmpty().withMessage('Last Name is required'),
+    body('users.*.email')
+      .isEmail()
+      .withMessage('Valid Email is required')
+      .matches(/^[a-zA-Z0-9._%+-]+@gmail\.com$/)
+      .withMessage('Email must be a Gmail address'),
+    body('users.*.phone1')
+      .matches(/^\d{10}$/)
+      .withMessage('Phone1 must be 10 digits'),
+    body('users.*.phone2')
+      .optional({ nullable: true, checkFalsy: true })
+      .matches(/^\d{10}$/)
+      .withMessage('Phone2 must be 10 digits'),
+    body('users.*.hobbies').isArray().withMessage('Hobbies must be an array'),
+    body('users.*.place').notEmpty().withMessage('Place is required'),
+    body('users.*.gender').notEmpty().withMessage('Gender is required'),
+  ];
+  
+//data filling for csv
+  export const dataFillBatch = async (req, res) => {
+    // check for validation errors from middleware
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ errors: errors.array() });
+    }
+  
+    try {
+      const { users } = req.body;
+  
+//inserting multiple users
+      await User.insertMany(users);
+  
+      res.status(201).json({ message: 'Users added successfully', count: users.length });
+    } catch (error) {
+      console.error('Batch insert error:', error);
+      res.status(500).json({ message: 'Server error while adding users' });
+    }
+  };
 
+export const deleteData=async(req, res) => {
+
+    const { ids } = req.body;
+    console.log("reached endpoint",ids);
+    try {
+      await User.deleteMany({ _id: { $in: ids } });
+      res.status(200).json({ message: "Users deleted" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete users" });
+    }
+  };
 
 export const showData = async (req, res) => {
   try {

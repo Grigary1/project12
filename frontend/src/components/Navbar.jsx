@@ -12,7 +12,7 @@ export default function Navbar() {
     const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
     const navLinks = [
-        { path: "/", label: "Home" },
+        { path: "/", label: "Stats" },
         { path: "/table", label: "User Table" },
         { path: "/addDetails", label: "Add Details", adminOnly: true },
     ];
@@ -22,17 +22,17 @@ export default function Navbar() {
 
         if (adminOnly) {
             if (adminToken) {
-                // ✅ Admin is logged in
+                //logged as admin
                 window.location.href = path;
                 return;
             }
 
-            // ❌ Not logged in as admin
+            //not logged
             setShowLoginModal(true);
             return;
         }
 
-        // ✅ For non-admin paths
+        // if not admin
         window.location.href = path;
     };
 
@@ -44,7 +44,7 @@ export default function Navbar() {
                         Project
                     </Link>
 
-                    {/* Desktop Nav */}
+                    {/* navbar for desktop */}
                     <div className="hidden md:flex gap-6">
                         {navLinks.map(({ path, label, adminOnly }) => (
                             <button
@@ -60,7 +60,7 @@ export default function Navbar() {
                         ))}
                     </div>
 
-                    {/* Auth Buttons */}
+                    {/* button for auth */}
                     <div className="hidden md:flex items-center gap-4">
                         {isAuthenticated ? (
                             <>
@@ -78,7 +78,7 @@ export default function Navbar() {
                         )}
                     </div>
 
-                    {/* Mobile Hamburger */}
+                    {/* moble */}
                     <div className="md:hidden">
                         <button
                             onClick={() => setIsOpen(!isOpen)}
@@ -102,7 +102,7 @@ export default function Navbar() {
                 </div>
             </div>
 
-            {/* Mobile Nav Links */}
+            {/* for mobile */}
             {isOpen && (
                 <div className="md:hidden px-4 pb-4">
                     <div className="flex flex-col gap-4">
@@ -133,7 +133,7 @@ export default function Navbar() {
                 </div>
             )}
 
-            {/* Admin Login Modal */}
+            {/* admin modal */}
             {showLoginModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
                     <div className="bg-white p-6 rounded-lg shadow-lg text-center max-w-sm w-full">
