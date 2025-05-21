@@ -1,13 +1,15 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { useAuth } from "./../hooks/useHooks";
-import axios from 'axios'
+import axios from 'axios';
 
 export default function Navbar() {
     const [isOpen, setIsOpen] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
 
     const { isAuthenticated, role, logout } = useAuth();
+    const navigate = useNavigate();
+    const backendUrl = import.meta.env.VITE_BACKEND_URL;
 
     const navLinks = [
         { path: "/", label: "Home" },
@@ -16,12 +18,21 @@ export default function Navbar() {
     ];
 
     const handleNavClick = (path, adminOnly = false) => {
+        const adminToken = localStorage.getItem("adminToken");
+
         if (adminOnly) {
-            if (!isAuthenticated || role !== "admin") {
-                setShowLoginModal(true);
+            if (adminToken) {
+                // ✅ Admin is logged in
+                window.location.href = path;
                 return;
             }
+
+            // ❌ Not logged in as admin
+            setShowLoginModal(true);
+            return;
         }
+
+        // ✅ For non-admin paths
         window.location.href = path;
     };
 
@@ -33,14 +44,15 @@ export default function Navbar() {
                         Project
                     </Link>
 
+                    {/* Desktop Nav */}
                     <div className="hidden md:flex gap-6">
                         {navLinks.map(({ path, label, adminOnly }) => (
                             <button
                                 key={label}
                                 onClick={() => handleNavClick(path, adminOnly)}
                                 className={`text-sm font-medium transition ${window.location.pathname === path
-                                        ? "text-blue-600 underline"
-                                        : "text-gray-700 hover:text-blue-500 dark:text-gray-300 dark:hover:text-white"
+                                    ? "text-blue-600 underline"
+                                    : "text-gray-700 hover:text-blue-500 dark:text-gray-300 dark:hover:text-white"
                                     }`}
                             >
                                 {label}
@@ -48,6 +60,7 @@ export default function Navbar() {
                         ))}
                     </div>
 
+                    {/* Auth Buttons */}
                     <div className="hidden md:flex items-center gap-4">
                         {isAuthenticated ? (
                             <>
@@ -65,7 +78,7 @@ export default function Navbar() {
                         )}
                     </div>
 
-                    {/* Mobile hamburger */}
+                    {/* Mobile Hamburger */}
                     <div className="md:hidden">
                         <button
                             onClick={() => setIsOpen(!isOpen)}
@@ -89,7 +102,7 @@ export default function Navbar() {
                 </div>
             </div>
 
-            {/* Mobile nav links */}
+            {/* Mobile Nav Links */}
             {isOpen && (
                 <div className="md:hidden px-4 pb-4">
                     <div className="flex flex-col gap-4">
@@ -120,7 +133,7 @@ export default function Navbar() {
                 </div>
             )}
 
-            {/* Login Required Modal */}
+            {/* Admin Login Modal */}
             {showLoginModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
                     <div className="bg-white p-6 rounded-lg shadow-lg text-center max-w-sm w-full">
@@ -135,23 +148,21 @@ export default function Navbar() {
                                 const password = form.password.value;
 
                                 try {
-                                    const res = await fetch("/api/admin/login", {
-                                        method: "POST",
-                                        headers: {
-                                            "Content-Type": "application/json",
-                                        },
-                                        body: JSON.stringify({ username, password }),
+                                    const res = await axios.post(`${backendUrl}/api/admin/login`, {
+                                        username,
+                                        password,
                                     });
 
-                                    if (res.ok) {
-                                        // Optionally update auth state
-                                        window.location.reload(); // or use navigate('/addDetails')
+                                    if (res.status === 200) {
+                                        localStorage.setItem("adminToken", res.data.token);
+                                        console.log("Saved token:", res.data.token);
+                                        window.location.href = "/addDetails";
                                     } else {
-                                        alert("Invalid admin credentials");
+                                        alert("Invalid credentials");
                                     }
                                 } catch (err) {
                                     console.error("Login error:", err);
-                                    alert("Login failed. Try again.");
+                                    alert(err?.response?.data?.message || "Login failed. Try again.");
                                 }
                             }}
                             className="flex flex-col gap-3"
@@ -190,7 +201,6 @@ export default function Navbar() {
                     </div>
                 </div>
             )}
-
         </nav>
     );
 }

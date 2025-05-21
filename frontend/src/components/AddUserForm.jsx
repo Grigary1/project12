@@ -1,189 +1,278 @@
-import { useState } from "react";
+import React from "react";
 import axios from "axios";
-import { ImageSizeModal } from "./ImageSizeModal";
+import { useForm, useFieldArray } from "react-hook-form";
+import * as yup from "yup";
+import { yupResolver } from "@hookform/resolvers/yup";
 
-export default function AddUserForm({ role }) {
-  const [form, setForm] = useState({
-    name: "",
-    email: "",
-    phone1: "",
-    phone2: "",
-    hobbies: [""],
-    place: "",
-    gender: "",
-    photo: null,
+// Schema for Form Validation
+const schema = yup.object().shape({
+  firstName: yup.string().required("First Name is required"),
+  middleName: yup.string().optional(),
+  lastName: yup.string().required("Last Name is required"),
+  email: yup
+    .string()
+    .required("Email is required")
+    .email("Invalid email format")
+    .matches(/^[a-zA-Z0-9._%+-]+@gmail\.com$/, "Must be a Gmail address"),
+  phone1: yup
+    .string()
+    .required("Phone 1 is required")
+    .matches(/^\d{10}$/, "Phone number must be 10 digits"),
+  phone2: yup
+    .string()
+    .optional()
+    .matches(/^\d{10}$/, "Phone number must be 10 digits"),
+  hobbies: yup.array().of(yup.string().required("Hobby is required")),
+  place: yup.string().required("Place is required"),
+  gender: yup.string().required("Gender is required"),
+});
+
+export default function AddUserForm({ role = "User" }) {
+  const {
+    register,
+    handleSubmit,
+    control,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: yupResolver(schema),
+    defaultValues: {
+      firstName: "",
+      middleName: "",
+      lastName: "",
+      email: "",
+      phone1: "",
+      phone2: "",
+      hobbies: [""],
+      place: "",
+      gender: "",
+    },
   });
 
-  const [showModal, setShowModal] = useState(false);
-
-  if (role !== "admin") return <p className="text-red-500">Admins only</p>;
-
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
-    if (name === "photo") {
-      const file = files[0];
-      if (file.size > 10 * 1024 * 1024) {
-        setShowModal(true);
-        return;
-      }
-      setForm({ ...form, photo: file });
-    } else {
-      setForm({ ...form, [name]: value });
-    }
-  };
-
-  const handleHobbyChange = (index, value) => {
-    const newHobbies = [...form.hobbies];
-    newHobbies[index] = value;
-    setForm({ ...form, hobbies: newHobbies });
-  };
-
-  const addHobbyField = () => {
-    setForm({ ...form, hobbies: [...form.hobbies, ""] });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const data = new FormData();
-    for (const key in form) {
-      if (key === "hobbies") {
-        form.hobbies.forEach((hobby) => data.append("hobbies", hobby));
-      } else if (key === "photo" && form.photo) {
-        data.append("photo", form.photo);
-      } else {
-        data.append(key, form[key]);
-      }
-    }
-
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "hobbies",
+  });
+  const backendUrl=import.meta.env.VITE_BACKEND_URL;
+  const onSubmit = async (data) => {
     try {
-      await axios.post("/api/userdata", data, {
-        headers: { "Content-Type": "multipart/form-data" },
+      await axios.post(`${backendUrl}/api/admin/filldata`, {
+        ...data,
       });
-      alert("User data submitted successfully!");
+      alert("User added successfully!");
+      reset();
     } catch (err) {
-      alert("Error submitting form.");
+      alert("Error submitting form");
     }
   };
 
   return (
-    <>
-      <ImageSizeModal isOpen={showModal} onClose={() => setShowModal(false)} />
-      <form
-        onSubmit={handleSubmit}
-        className="max-w-2xl mx-auto bg-white shadow-lg p-6 rounded-lg space-y-4"
-      >
-        <h2 className="text-xl font-bold">Add New User (Admin Only)</h2>
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="max-w-3xl mx-auto bg-white shadow-lg p-6 rounded-lg space-y-6"
+      noValidate
+    >
+      <h2 className="text-2xl font-bold text-center mb-6">Add New User</h2>
 
-        <input
-          name="name"
-          required
-          onChange={handleChange}
-          placeholder="Full Name"
-          className="input"
-        />
+      {/* Name Fields */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="space-y-1">
+          <label htmlFor="firstName" className="block font-medium">
+            First Name
+          </label>
+          <input
+            id="firstName"
+            {...register("firstName")}
+            placeholder="John"
+            className="w-full px-4 py-2 border rounded-md"
+          />
+          {errors.firstName && (
+            <p className="text-red-500 text-sm">{errors.firstName.message}</p>
+          )}
+        </div>
 
-        <input
-          name="email"
-          type="email"
-          required
-          onChange={handleChange}
-          placeholder="Email"
-          className="input"
-        />
+        <div className="space-y-1">
+          <label htmlFor="middleName" className="block font-medium">
+            Middle Name (Optional)
+          </label>
+          <input
+            id="middleName"
+            {...register("middleName")}
+            placeholder="Doe"
+            className="w-full px-4 py-2 border rounded-md"
+          />
+        </div>
 
-        <input
-          name="phone1"
-          required
-          onChange={handleChange}
-          placeholder="Primary Phone"
-          className="input"
-        />
+        <div className="space-y-1">
+          <label htmlFor="lastName" className="block font-medium">
+            Last Name
+          </label>
+          <input
+            id="lastName"
+            {...register("lastName")}
+            placeholder="Smith"
+            className="w-full px-4 py-2 border rounded-md"
+          />
+          {errors.lastName && (
+            <p className="text-red-500 text-sm">{errors.lastName.message}</p>
+          )}
+        </div>
+      </div>
 
-        <input
-          name="phone2"
-          onChange={handleChange}
-          placeholder="Secondary Phone (optional)"
-          className="input"
-        />
+      {/* Email & Phones */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="sm:col-span-2 space-y-1">
+          <label htmlFor="email" className="block font-medium">
+            Gmail Address
+          </label>
+          <input
+            id="email"
+            {...register("email")}
+            type="email"
+            placeholder="example@gmail.com"
+            className="w-full px-4 py-2 border rounded-md"
+          />
+          {errors.email && (
+            <p className="text-red-500 text-sm">{errors.email.message}</p>
+          )}
+        </div>
 
-        <div>
-          <label className="block font-semibold mb-1">Hobbies:</label>
-          {form.hobbies.map((hobby, idx) => (
+        <div className="space-y-1">
+          <label htmlFor="phone1" className="block font-medium">
+            Primary Phone
+          </label>
+          <input
+            id="phone1"
+            {...register("phone1")}
+            placeholder="9876543210"
+            className="w-full px-4 py-2 border rounded-md"
+          />
+          {errors.phone1 && (
+            <p className="text-red-500 text-sm">{errors.phone1.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-1">
+          <label htmlFor="phone2" className="block font-medium">
+            Secondary Phone (Optional)
+          </label>
+          <input
+            id="phone2"
+            {...register("phone2")}
+            placeholder="9876543210"
+            className="w-full px-4 py-2 border rounded-md"
+          />
+          {errors.phone2 && (
+            <p className="text-red-500 text-sm">{errors.phone2.message}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Hobbies */}
+      <div className="space-y-2">
+        <label className="block font-medium">Hobbies</label>
+        {fields.map((field, index) => (
+          <div key={field.id} className="flex items-center gap-2">
             <input
-              key={idx}
-              value={hobby}
-              onChange={(e) => handleHobbyChange(idx, e.target.value)}
-              className="input my-1"
-              placeholder={`Hobby #${idx + 1}`}
+              {...register(`hobbies.${index}`, { required: true })}
+              placeholder="Reading, Coding..."
+              className="w-full px-4 py-2 border rounded-md"
             />
-          ))}
-          <button
-            type="button"
-            onClick={addHobbyField}
-            className="text-blue-500 mt-2"
-          >
-            + Add another hobby
-          </button>
-        </div>
-
-        <select
-          name="place"
-          required
-          onChange={handleChange}
-          className="input"
-        >
-          <option value="">Select Place</option>
-          <option value="Delhi">Kerala</option>
-          <option value="Mumbai">Tamil Nadu</option>
-          <option value="Chennai">Delhi</option>
-        </select>
-
-        <div className="space-x-4">
-          <label>
-            <input
-              type="radio"
-              name="gender"
-              value="Male"
-              onChange={handleChange}
-              required
-            />{" "}
-            Male
-          </label>
-          <label>
-            <input
-              type="radio"
-              name="gender"
-              value="Female"
-              onChange={handleChange}
-            />{" "}
-            Female
-          </label>
-          <label>
-            <input
-              type="radio"
-              name="gender"
-              value="Other"
-              onChange={handleChange}
-            />{" "}
-            Other
-          </label>
-        </div>
-
-        <input
-          name="photo"
-          type="file"
-          accept="image/*"
-          onChange={handleChange}
-          className="input"
-        />
+            {index > 0 && (
+              <button
+                type="button"
+                onClick={() => remove(index)}
+                className="text-red-500 hover:text-red-700"
+              >
+                ✕
+              </button>
+            )}
+            {errors.hobbies?.[index] && (
+              <p className="text-red-500 text-sm">
+                {errors.hobbies[index]?.message || "Hobby is required"}
+              </p>
+            )}
+          </div>
+        ))}
 
         <button
-          type="submit"
-          className="bg-blue-600 text-white py-2 px-6 rounded hover:bg-blue-700"
+          type="button"
+          onClick={() => append("")}
+          className="text-blue-500 hover:underline"
         >
-          Submit
+          + Add Hobby
         </button>
-      </form>
-    </>
+      </div>
+
+      {/* Place & Gender */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <label htmlFor="place" className="block font-medium">
+            Place
+          </label>
+          <select
+            id="place"
+            {...register("place")}
+            className="w-full px-4 py-2 border rounded-md"
+          >
+            <option value="">Select Place</option>
+            <option value="Kerala">Kerala</option>
+            <option value="Tamil Nadu">Tamil Nadu</option>
+            <option value="Delhi">Delhi</option>
+          </select>
+          {errors.place && (
+            <p className="text-red-500 text-sm">{errors.place.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-1">
+          <label className="block font-medium">Gender</label>
+          <div className="flex gap-4 mt-1">
+            <label className="flex items-center gap-2">
+              <input {...register("gender")} type="radio" value="Male" />
+              Male
+            </label>
+            <label className="flex items-center gap-2">
+              <input {...register("gender")} type="radio" value="Female" />
+              Female
+            </label>
+            <label className="flex items-center gap-2">
+              <input {...register("gender")} type="radio" value="Other" />
+              Other
+            </label>
+          </div>
+          {errors.gender && (
+            <p className="text-red-500 text-sm">{errors.gender.message}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Role (Admin Only) */}
+      {role === "Admin" && (
+        <div className="space-y-1">
+          <label className="block font-medium">User Role</label>
+          <select
+            {...register("role")}
+            className="w-full px-4 py-2 border rounded-md"
+          >
+            <option value="User">User</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
+      )}
+
+      {/* Submit Button */}
+      <div>
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className={`w-full sm:w-auto px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors ${
+            isSubmitting ? "opacity-70 cursor-not-allowed" : ""
+          }`}
+        >
+          {isSubmitting ? "Submitting..." : "Add User"}
+        </button>
+      </div>
+    </form>
   );
 }
